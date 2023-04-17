@@ -23,4 +23,5 @@ submissions/
 ph
 barrier
 /lab-*.json
+.vscode
 .DS_Store
