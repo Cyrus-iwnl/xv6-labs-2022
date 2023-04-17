@@ -683,3 +683,16 @@ procdump(void)
     printf("\n");
   }
 }
+
+// get the number of processes whose state is not UNUSED
+int
+get_nproc()
+{
+  int n = 0;
+  for(int i=0; i<NPROC; i++){
+    if(proc[i].state != UNUSED){
+      n++;
+    }
+  }
+  return n;
+}

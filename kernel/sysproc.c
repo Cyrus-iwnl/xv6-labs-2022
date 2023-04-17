@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -99,4 +100,17 @@ sys_trace(void)
   argint(0, &n);
   myproc()->mask = n;
   return 0;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  struct sysinfo info;
+  info.freemem = get_freemem();
+  info.nproc = get_nproc();
+
+  uint64 addr;
+  argaddr(0, &addr);
+  // kernel cannot directly access user space. use copyout()
+  return copyout(myproc()->pagetable, addr, (char*)&info, sizeof(info));
 }
