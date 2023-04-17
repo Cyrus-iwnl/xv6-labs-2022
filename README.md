@@ -19,4 +19,4 @@ labs of ***Operating System Engineering***, MIT 6.1818(Fall 2022)
 4. unpause gdb and invoke `ls` in qemu
 5. when the program runs to `main()`, then set breakpoints at any place you want
 
-if you don't do like above, you'll run into `cannot access memory` error when set breakpoints.
+if you don't do like above, you'll run into `cannot access memory` error when setting breakpoints.
