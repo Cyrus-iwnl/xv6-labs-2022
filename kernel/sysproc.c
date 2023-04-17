@@ -93,7 +93,10 @@ sys_uptime(void)
 }
 
 uint64
-sys_trace(int)
+sys_trace(void)
 {
-  // TODO
+  int n;
+  argint(0, &n);
+  myproc()->mask = n;
+  return 0;
 }
