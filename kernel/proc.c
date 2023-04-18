@@ -699,3 +699,25 @@ procdump(void)
     printf("\n");
   }
 }
+int
+pgaccess(uint64 va_start, int npage, uint64 res_addr)
+{
+  if(va_start > MAXVA) {
+    panic("pgaccess: too large VA");
+  }
+  if(npage > 32){
+    panic("pgaccess: too many pages");
+  }
+
+  uint res = 0;
+  struct proc *p = myproc();
+  for(int i=0; i<npage; i++){
+    uint64 va = va_start + i * PGSIZE;
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if((*pte & PTE_V) && (*pte & PTE_A)) {
+      res |= (1 << i);
+      *pte ^= PTE_A;
+    }
+  }
+  return copyout(p->pagetable, res_addr, (char*)&res, sizeof(res));
+}
