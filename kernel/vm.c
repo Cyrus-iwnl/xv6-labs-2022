@@ -15,6 +15,29 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+void
+_vmprint(pagetable_t pagetable, int depth)
+{
+  for(int i=0; i<512; i++){
+    if((pagetable[i] & PTE_V) == 0) continue;
+    uint64 pa = PTE2PA(pagetable[i]);
+    for(int j=0; j<depth; j++){
+      printf(" ..");
+    }
+    printf("%d: pte %p pa %p\n", i, pagetable[i], pa);
+    if((pagetable[i] & (PTE_R|PTE_W|PTE_X)) == 0){
+      _vmprint((pagetable_t)pa, depth+1);
+    }
+  }
+}
+
+void
+vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n", pagetable);
+  _vmprint(pagetable, 1);
+}
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -45,7 +68,7 @@ kvmmake(void)
 
   // allocate and map a kernel stack for each process.
   proc_mapstacks(kpgtbl);
-  
+
   return kpgtbl;
 }
 
@@ -147,7 +170,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 
   if(size == 0)
     panic("mappages: size");
-  
+
   a = PGROUNDDOWN(va);
   last = PGROUNDDOWN(va + size - 1);
   for(;;){
@@ -338,7 +361,7 @@ void
 uvmclear(pagetable_t pagetable, uint64 va)
 {
   pte_t *pte;
-  
+
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     panic("uvmclear");
