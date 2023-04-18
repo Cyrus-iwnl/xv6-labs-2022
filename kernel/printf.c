@@ -25,6 +25,16 @@ static struct {
 
 static char digits[] = "0123456789abcdef";
 
+void
+backtrace(void)
+{
+  uint64 fp = r_fp();
+  while(fp != PGROUNDDOWN(fp)){
+    printf("%p\n", *(uint64*)(fp - 8));
+    fp = *(uint64*)(fp - 16);
+  }
+}
+
 static void
 printint(int xx, int base, int sign)
 {
