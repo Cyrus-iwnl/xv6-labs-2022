@@ -26,7 +26,7 @@ static struct {
 static char digits[] = "0123456789abcdef";
 
 void
-backtrace(void)
+backtrace()
 {
   uint64 fp = r_fp();
   while(fp != PGROUNDDOWN(fp)){
