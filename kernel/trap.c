@@ -69,8 +69,9 @@ usertrap(void)
     // ok
   } else if(r_scause() == 15) {
     // page fault (store)
-    if(cow(p->pagetable, r_stval()) != 0)
+    if(cow(p->pagetable, r_stval()) == 0){
       setkilled(p);
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -224,30 +225,31 @@ devintr()
 }
 
 // 若是cow情况，则开辟新空间、拷贝内存、解除旧映射、建立新的可写映射
-// return -1 if error, return 0 if OK
-int
+// return newly allocated PA if ok, return 0 if error
+uint64
 cow(pagetable_t pagetable, uint64 va)
 {
   if(va > MAXVA){
-    return -1;
+    return 0;
   }
   pte_t *pte = walk(pagetable, va, 0);
-  if(pte == 0)            return -1;
-  if((*pte & PTE_V) == 0) return -1;
-  if((*pte & PTE_U) == 0) return -1;
-  if((*pte & PTE_C) == 0) return -1;
+  if(pte == 0)            return 0;
+  if((*pte & PTE_V) == 0) return 0;
+  if((*pte & PTE_U) == 0) return 0;
+  if(*pte & PTE_W)        return PTE2PA(*pte);
+  if((*pte & PTE_C) == 0) return 0;
 
   // COW read only
   uint64 pa = PTE2PA(*pte);
   int flags = PTE_FLAGS(*pte);
   void *mem = kalloc();
-  if(mem == 0) return -1;
+  if(mem == 0) return 0;
   memmove(mem, (const void*)pa, PGSIZE);
   uvmunmap(pagetable, PGROUNDDOWN(va), 1, 1);
   flags = (flags | PTE_W) & (~PTE_C);
   if(mappages(pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, flags) != 0){
     kfree(mem);
-    return -1;
+    return 0;
   }
-  return 0;
+  return (uint64)mem;
 }

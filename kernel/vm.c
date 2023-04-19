@@ -307,7 +307,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
-  uint flags;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -320,10 +319,10 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if(*pte & PTE_W){
       *pte = (*pte & (~PTE_W)) | PTE_C;
     }
-    flags = PTE_FLAGS(*pte);
-    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
+    if(mappages(new, i, PGSIZE, (uint64)pa, PTE_FLAGS(*pte)) != 0){
       goto err;
     }
+    addref(pa);
   }
   return 0;
 
@@ -355,7 +354,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = cow(pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
