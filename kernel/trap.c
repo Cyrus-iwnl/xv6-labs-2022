@@ -224,8 +224,9 @@ devintr()
   }
 }
 
+// 若不是cow情况，则返回对应的pa
 // 若是cow情况，则开辟新空间、拷贝内存、解除旧映射、建立新的可写映射
-// return newly allocated PA if ok, return 0 if error
+// 如果正常，返回新分配的pa；如果有错误，返回0
 uint64
 cow(pagetable_t pagetable, uint64 va)
 {
