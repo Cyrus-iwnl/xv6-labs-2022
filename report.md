@@ -32,7 +32,7 @@
 
 + RISC-V页表结构
 
-![](assets\addr_trans.png)
+![](assets/addr_trans.png)
 
 ## lab4 traps
 
