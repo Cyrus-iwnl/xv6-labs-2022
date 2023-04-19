@@ -65,12 +65,12 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if(r_scause()==15) {
+  } else if((which_dev = devintr()) != 0) {
+    // ok
+  } else if(r_scause() == 15) {
     // page fault (store)
     if(cow(p->pagetable, r_stval()) != 0)
       setkilled(p);
-  } else if((which_dev = devintr()) != 0) {
-    // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -235,17 +235,16 @@ cow(pagetable_t pagetable, uint64 va)
   if(pte == 0)            return -1;
   if((*pte & PTE_V) == 0) return -1;
   if((*pte & PTE_U) == 0) return -1;
+  if((*pte & PTE_C) == 0) return -1;
 
+  // COW read only
   uint64 pa = PTE2PA(*pte);
   int flags = PTE_FLAGS(*pte);
-  if(flags & PTE_W) return 0; // writable
-  if(flags & PTE_C == 0) return -1; // read only originally
-  // COW read only
   void *mem = kalloc();
   if(mem == 0) return -1;
   memmove(mem, (const void*)pa, PGSIZE);
   uvmunmap(pagetable, PGROUNDDOWN(va), 1, 1);
-  flags = flags | PTE_W & (~PTE_C);
+  flags = (flags | PTE_W) & (~PTE_C);
   if(mappages(pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, flags) != 0){
     kfree(mem);
     return -1;

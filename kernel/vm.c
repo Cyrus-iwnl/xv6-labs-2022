@@ -308,7 +308,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -319,9 +318,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     // PTE_C indicates read only is for COW, but not originally
     // if read only originally, do not set PTE_C
     if(*pte & PTE_W){
-      *pte = *pte & (~PTE_W) | PTE_C;
+      *pte = (*pte & (~PTE_W)) | PTE_C;
     }
-    int flags = PTE_FLAGS(*pte);
+    flags = PTE_FLAGS(*pte);
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       goto err;
     }
