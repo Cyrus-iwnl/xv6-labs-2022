@@ -11,6 +11,9 @@ You may wonder why we are studying xv6, an operating system that resembles Unix 
 
 + xv6: https://github.com/mit-pdos/xv6-riscv
 
+## Lab Report
++ see [report.md](./report.md)
+
 ## How to debug user-level program
 > debug ls.c for example
 1. set a breakpoint at `main()` of it
