@@ -229,7 +229,7 @@ devintr()
 uint64
 cow(pagetable_t pagetable, uint64 va)
 {
-  if(va > MAXVA){
+  if(va >= MAXVA){
     return 0;
   }
   pte_t *pte = walk(pagetable, va, 0);
