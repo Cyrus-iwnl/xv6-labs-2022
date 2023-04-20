@@ -77,10 +77,13 @@
 + 上下文切换：`usertrap()->yield()->sched()->swtch()->scheduler()`
   + 在`swtch()`时保存所有寄存器到context
   + `swtch()`结束后返回到指向上一次调用`swtch()`的返回位置（`scheduler()`），这个位置保存在context的ra寄存器中
+  + 在上下文切换时，p->lock必须持有，否则可能会发生问题：在`yield()`将进程设为RUNNABLE后，`swtch()`切换内核栈前，其他cpu也运行了这个进程，两个CPU运行在一个栈上
+  + p->lock在线程间传递：在`yield()`获得的锁，在`scheduler()`释放，反之亦然。
 
 ![switch](report.assets/switch.png)
 
-
++ 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程，将cpu给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
+  + `sleep()`必须为原子操作
 
 ## lab7 network driver
 
