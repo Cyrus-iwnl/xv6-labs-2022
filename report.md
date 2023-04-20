@@ -84,9 +84,9 @@
 
 ![switch](report.assets/switch.png)
 
-+ 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程，将cpu给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
++ 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程（加入等待队列），将cpu让给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
   
-  + `sleep`和`wakeup`都应该持有进程锁（`p->lock`），是原子操作
+  + `sleep`和`wakeup`都应该持有一个条件锁，所以是原子操作
   + `sleep`应该释放信号量的锁，并且让进程睡眠。
   + 只有满足上面两个要求，才不会产生**死锁**以及**lost wakeup**问题。
   
