@@ -69,8 +69,10 @@
 ## lab6 multithreading
 
 ### 实现功能
-
-
++ 为用户级线程实现上下文切换机制
++ 在Linux系统，使用phread库，实现
+  + 哈希表存取的并行编程
+  + Barrier：所有线程都必须在此等待，直到所有其他线程也达到该点。
 
 ### 个人收获
 
@@ -84,6 +86,17 @@
 
 + 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程，将cpu给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
   + `sleep()`必须为原子操作
++ `<pthread.h>`的使用
+
+```c
+pthread_mutex_t lock;            // declare a lock
+pthread_mutex_init(&lock, NULL); // initialize the lock
+pthread_mutex_lock(&lock);       // acquire lock
+pthread_mutex_unlock(&lock);     // release lock
+
+pthread_cond_wait(&cond, &mutex);  // go to sleep on cond, releasing lock mutex, acquiring upon wake up
+pthread_cond_broadcast(&cond);     // wake up every thread sleeping on cond
+```
 
 ## lab7 network driver
 
