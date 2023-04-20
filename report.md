@@ -85,8 +85,33 @@
 ![switch](report.assets/switch.png)
 
 + 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程，将cpu给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
-  + `sleep()`必须为原子操作
-+ `<pthread.h>`的使用
+  
+  + `sleep`和`wakeup`都应该持有进程锁（`p->lock`），是原子操作
+  + `sleep`应该释放信号量的锁，并且让进程睡眠。
+  + 只有满足上面两个要求，才不会产生**死锁**以及**lost wakeup**问题。
+  
+  ```c
+  struct semaphore {
+    struct spinlock lock;
+    int count;
+  };
+  // 正确的PV操作
+  void V(struct semaphore *s){
+      acquire(&s->lock);
+      s->count++;
+      wakeup(s);
+      release(&s->lock);
+  }
+  void P(struct semaphore *s){
+      acquire(&s->lock);
+      while(s->count == 0)
+          sleep(s, &s->lock);
+      s->count--;
+      release(&s->lock);   
+  }
+  ```
+  
++ POSIX <pthread.h>的使用 （更多信息可以使用`man pthreads`命令查看）
 
 ```c
 pthread_mutex_t lock;            // declare a lock
