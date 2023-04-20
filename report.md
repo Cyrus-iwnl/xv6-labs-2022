@@ -32,7 +32,7 @@
 
 + RISC-V页表结构
 
-![](assets/addr_trans.png)
+![](report.assets/addr_trans.png)
 
 ## lab4 traps
 
@@ -44,7 +44,9 @@
 
 ### 个人收获
 
-+ 在`usertrap()`中处理trap（包括时钟中断等）
++ trap()的过程：`trampoline.S->usertrap()->kernel->usertrapret()->trampoline.S`
+
+
 + 进程在发生trap时，把寄存器的状态保存在`TRAPFRAME`中。trap结束返回到用户空间时，恢复到发生trap前的寄存器状态
   + 在本实验中，`sigalarm`会注册一个警告函数，当发生时钟中断且满足tick要求时，调用警告函数，警告函数完成后会调用`sigreturn`。
   + 警告函数在用户空间运行，可能会改变寄存器的值，所以在调用警告函数前，需要保存当前的寄存器状态。在警告函数结束后，通过`sigreturn`恢复到发生时钟中断之前的状态。
@@ -65,6 +67,20 @@
   + `kfree()`应该只在引用计数为0时，将页面放回自由列表
 
 ## lab6 multithreading
+
+### 实现功能
+
+
+
+### 个人收获
+
++ 上下文切换：`usertrap()->yield()->sched()->swtch()->scheduler()`
+  + 在`swtch()`时保存所有寄存器到context
+  + `swtch()`结束后返回到指向上一次调用`swtch()`的返回位置（`scheduler()`），这个位置保存在context的ra寄存器中
+
+![switch](report.assets/switch.png)
+
+
 
 ## lab7 network driver
 
