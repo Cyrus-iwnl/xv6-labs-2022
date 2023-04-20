@@ -70,9 +70,9 @@
 
 ### 实现功能
 + 为用户级线程实现上下文切换机制
-+ 在Linux系统，使用phread库，实现
-  + 哈希表存取的并行编程
-  + Barrier：所有线程都必须在此等待，直到所有其他线程也达到该点。
++ 在Linux系统，使用phread库
+  + 使用互斥锁实现哈希表存取的并行
+  + 使用互斥锁和条件变量实现线程之间的同步
 
 ### 个人收获
 
@@ -84,32 +84,10 @@
 
 ![switch](report.assets/switch.png)
 
-+ 同步：通过信号量(semaphore)实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程（加入等待队列），将cpu让给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
-  
-  + `sleep`和`wakeup`都应该持有一个条件锁，所以是原子操作
-  + `sleep`应该释放信号量的锁，并且让进程睡眠。
-  + 只有满足上面两个要求，才不会产生**死锁**以及**lost wakeup**问题。
-  
-  ```c
-  struct semaphore {
-    struct spinlock lock;
-    int count;
-  };
-  // 正确的PV操作
-  void V(struct semaphore *s){
-      acquire(&s->lock);
-      s->count++;
-      wakeup(s);
-      release(&s->lock);
-  }
-  void P(struct semaphore *s){
-      acquire(&s->lock);
-      while(s->count == 0)
-          sleep(s, &s->lock);
-      s->count--;
-      release(&s->lock);   
-  }
-  ```
++ 同步：通过`sleep`和`wakeup`实现条件同步机制。在进程需要等待IO时，使用`sleep`睡眠进程（加入等待队列），将cpu让给其他进程使用，等待结束后再调用`wakeup`唤醒睡眠的进程。
+  + `sleep`应该释放锁，让进程睡眠，被唤醒后需要重新获取锁。
+  + `sleep`操作应该是原子的。
+  + 只有满足这些要求，才不会产生**死锁**以及**lost wakeup**问题。
   
 + POSIX <pthread.h>的使用 （更多信息可以使用`man pthreads`命令查看）
 
