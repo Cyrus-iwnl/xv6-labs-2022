@@ -1,21 +1,21 @@
 # Lab Report
 
 ## lab1 utilities
-### 实现功能
+### 功能
 + 实现一些简单的Unix程序，例如`sleep, find, xargs`
 + 利用管道进行进程间通信 `pingpong`
 + 一个并发的素数筛选程序 `primes`
 
-### 个人收获
+### 笔记
 + 并发素数程序有点意思，可参考[这个网站](https://swtch.com/~rsc/thread/)
 
 ## lab2 system calls
-### 实现功能
+### 功能
 实现两个系统调用
 + 追踪系统调用 `trace`
 + 收集系统信息 `sysinfo`
 
-### 个人收获
+### 笔记
 + 用户态的函数可以直接传递参数，而系统调用不能直接传递参数，必须通过寄存器。内核读取寄存器来保存参数(`argint,argaddr`)。
 + 内核函数不能直接访问用户空间，必须通过特殊的方式将内存从内核拷贝到用户空间。例如在如下系统调用中，内核必须通过`copyout()`把`struct sysinfo`拷贝回用户空间。
   ```c
@@ -23,12 +23,12 @@
   ```
 
 ## lab3 page tables
-### 实现功能
+### 功能
 + 通过在用户与内核之间只读的一块区域共享数据来加速`getpid`系统调用
 + `vmprint()` 打印进程的页表
 + `pgaccess() `检测并报告用户空间访问了哪些页
 
-### 个人收获
+### 笔记
 
 + RISC-V页表结构
 
@@ -36,13 +36,13 @@
 
 ## lab4 traps
 
-### 实现功能
+### 功能
 
 + `backtrace()` 使用帧指针遍历堆栈，并打印堆栈帧上保存的返回地址
 + 系统调用`sigalarm()`。若一个应用程序调用`sigalarm(n, fn)`，则CPU每运行 `n` ticks后，内核都应调用函数`fn`。当`fn`返回时，应用程序应从在中断的地方继续执行。
   + 更一般地说，`fn`是一个用户级中断/错误处理程序
 
-### 个人收获
+### 笔记
 
 + trap()的过程：`trampoline.S->usertrap()->kernel->usertrapret()->trampoline.S`
 
@@ -68,13 +68,13 @@
 
 ## lab6 multithreading
 
-### 实现功能
+### 功能
 + 为用户级线程实现上下文切换机制
 + 在Linux系统，使用phread库
   + 使用互斥锁实现哈希表存取的并行
   + 使用互斥锁和条件变量实现线程之间的同步
 
-### 个人收获
+### 笔记
 
 + 上下文切换：`usertrap()->yield()->sched()->swtch()->scheduler()`
   + 在`swtch()`时保存所有寄存器到context
@@ -102,6 +102,26 @@ pthread_cond_broadcast(&cond);     // wake up every thread sleeping on cond
 ```
 
 ## lab7 network driver
+
+### 功能
+
+
+
+### 笔记
+
++ 从控制台输入：
+  + 控制台绑定了一个文件描述符上，系统调用`read()`读取这个文件时调用`consoleread()`。`consoleread()`在控制台缓冲区没有一整行时，进入等待状态。
+  + 用户输入，UART发起中断。中断处理函数`usertrap()`调用`devintr()`
+  + `devintr()`查看RISC-V的*scause*寄存器，发现中断是来自外部设备（而非时钟）。然后询问PLIC是哪个设备发起的中断。如果是UART，调用`uartintr()`
+  + `uartintr()`从UART读一个字符，传入到`consoleintr()`
+  + `consoleintr()`将字符保存在控制台的缓冲区，直到有一整行到达
+  + 当新行到达时，`consoleintr()`唤醒正在等待的`consoleread()`
+  + `consoleread()`会把控制台的缓冲区的一行返回到用户空间
++ 当一个设备在不可预测的时间需要关注时，中断是有意义的，但中断有很高的CPU开销。因此，高速设备，如网络和磁盘控制器，使用一些技巧来减少对中断的需求。
+  1. 为整批传入或传出的请求引发一个中断
+  2. **轮询（polling）**：驱动程序完全禁用中断，并定期检查设备，看它是否需要注意
+  + 如果设备执行操作非常快，轮询是有意义的，但如果设备大部分时间是空闲的，它就会浪费CPU时间。一些驱动程序根据当前的设备负载，在轮询和中断之间动态切换。
++ UART驱动首先将传入的数据复制到内核中的一个缓冲区，然后再复制到用户空间，对于高速设备来说，这种双重复制会大大降低性能。使用**DMA**可以直接在内存和外设之间传输数据，不需要CPU处理。
 
 ## lab8 locks
 
