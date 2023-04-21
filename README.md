@@ -8,8 +8,8 @@ You may wonder why we are studying xv6, an operating system that resembles Unix 
 
 ## Websites
 + schedule: https://pdos.csail.mit.edu/6.828/2022/schedule.html
-
 + xv6: https://github.com/mit-pdos/xv6-riscv
++ xv6 book: https://pdos.csail.mit.edu/6.828/2022/xv6/book-riscv-rev3.pdf
 
 ## Lab Report
 + see [report.md](./report.md)
