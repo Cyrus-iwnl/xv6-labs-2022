@@ -133,6 +133,21 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+  while(1){
+    uint32 index = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+    struct rx_desc *desc = rx_ring + index;
+    if(!(desc->status & E1000_RXD_STAT_DD)){
+      return;
+    }
+    struct mbuf *buf = rx_mbufs[index];
+    buf->len = desc->length;
+    net_rx(buf);
+    struct mbuf *newbuf = mbufalloc(0);
+    rx_mbufs[index] = newbuf;
+    desc->addr = (uint64)newbuf->head;
+    desc->status = 0;
+    regs[E1000_RDT] = index;
+  }
 }
 
 void
