@@ -128,6 +128,48 @@ pthread_cond_broadcast(&cond);     // wake up every thread sleeping on cond
 
 ## lab8 locks
 
+### 功能
+
+
+
+### 笔记
+
++ 自旋锁（spinlock）
+  + 获取：不断将1与锁的值进行交换，如果返回值（锁的旧值）是0，则获取了锁，退出循环
+  + **交换**操作必须满足以下三个条件
+    + 必须是是**原子的**，指令的执行不能被打断
+    + 要有一个compiler barrier，编译器的优化不能越过这个语句
+    + 要有一个memory fence，在此前所有的`store`指令都生效，即所有的`load`指令都发生在这之后
+
+```c
+struct spinlock {
+  int locked;
+}
+void acquire(struct spinlock *lk) {
+  while(__sync_lock_test_and_set(&lk->locked, 1) != 0);
+  __sync_synchronize(); // memeory fence
+}
+```
+
++ 互斥锁（mutex）
+  + 互斥锁会先试着自旋；如果没能获得锁，则会进入 Slow Path，由操作系统接管锁的实现。由于无法预知多久后锁才会被释放，操作系统会将上锁的线程暂停并不再调度它，直到持有锁的线程释放锁为止。
+
+```c
+struct mutex {
+  int locked;
+  struct spinlock lk;
+}
+void acquire(struct mutex *mutex) {
+  acquire(&mutex->lk);
+  while (mutex->locked) {
+    sleep(mutex, &mutex->lk); // sleep:获取spinlock，释放mutex，然后进入睡眠
+  }
+  release(&mutex->lk);
+}
+```
+
++ 一些锁保护的数据需要被线程和中断处理程序都使用，有时会产生死锁的情况。为了解决这种情况，当一个CPU获取锁时，需要禁用这个CPU上中断；在CPU释放所有锁时，重新开启中断。
+
 ## lab9 file system
 
 ## lab10 mmap
