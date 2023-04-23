@@ -164,5 +164,3 @@ bunpin(struct buf *b) {
   b->refcnt--;
   release(&bcache.locks[i]);
 }
-
-
