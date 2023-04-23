@@ -82,7 +82,6 @@ bget(uint dev, uint blockno)
   release(&bcache.locks[i]);
 
   // Not cached.
-  // Recycle the least recently used (LRU) unused buffer.
   for(int j = 0; j<NBUCKET; j++){
     acquire(&bcache.locks[j]);
     for(b = bcache.heads[j].prev; b != &bcache.heads[j]; b = b->prev){
@@ -137,7 +136,6 @@ bwrite(struct buf *b)
 }
 
 // Release a locked buffer.
-// Move to the head of the most-recently-used list.
 void
 brelse(struct buf *b)
 {
@@ -149,16 +147,15 @@ brelse(struct buf *b)
   int i = HASH(b->blockno);
   acquire(&bcache.locks[i]);
   b->refcnt--;
-  if (b->refcnt == 0) {
-    // no one is waiting for it.
-    b->next->prev = b->prev;
-    b->prev->next = b->next;
-    b->next = bcache.heads[i].next;
-    b->prev = &bcache.heads[i];
-    bcache.heads[i].next->prev = b;
-    bcache.heads[i].next = b;
-  }
-
+  // if (b->refcnt == 0) {
+  //   // no one is waiting for it.
+  //   b->next->prev = b->prev;
+  //   b->prev->next = b->next;
+  //   b->next = bcache.heads[i].next;
+  //   b->prev = &bcache.heads[i];
+  //   bcache.heads[i].next->prev = b;
+  //   bcache.heads[i].next = b;
+  // }
   release(&bcache.locks[i]);
 }
 
