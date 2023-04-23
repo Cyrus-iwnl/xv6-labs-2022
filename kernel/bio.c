@@ -27,30 +27,35 @@
 #define HASH(x) ((x) % NBUCKET)
 
 struct {
-  struct buf buf[NBUF];
-  struct spinlock biglock;
-  // hash table
-  struct buf bufmap[NBUCKET];
   struct spinlock locks[NBUCKET];
+  struct buf buf[NBUF];
+  struct buf heads[NBUCKET]; // hash table of buffers
 } bcache;
 
 void
 binit(void)
 {
-  // initialize locks and map
+  struct buf *b;
+
+  // initialize locks
   char *name = "bcache0";
   for(int i=0; i<NBUCKET; i++){
     initlock(&bcache.locks[i], name);
     name[6]++;
-    bcache.bufmap[i].next = 0;
   }
-  initlock(&bcache.biglock, "bcache_big");
 
-  // initialize hash table of buffers
-  struct buf *b;
+  // Create hash table of buffers
+  for(int i=0; i<NBUCKET; i++){
+    bcache.heads[i].prev = &bcache.heads[i];
+    bcache.heads[i].next = &bcache.heads[i];
+  }
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
-    b->next = bcache.bufmap[0].next;
-    bcache.bufmap[0].next = b;
+    int i = HASH(b->blockno);
+    b->next = bcache.heads[i].next;
+    b->prev = bcache.heads + i;
+    initsleeplock(&b->lock, "buffer");
+    bcache.heads[i].next->prev = b;
+    bcache.heads[i].next = b;
   }
 }
 
@@ -91,7 +96,6 @@ bget(uint dev, uint blockno)
           b->next->prev = b->prev;
           b->prev->next = b->next;
           release(&bcache.locks[j]);
-          // move to correct hash bucket
           acquire(&bcache.locks[i]);
           b->next = bcache.heads[i].next;
           b->prev = &bcache.heads[i];
@@ -139,12 +143,19 @@ brelse(struct buf *b)
     panic("brelse");
 
   releasesleep(&b->lock);
+
   int i = HASH(b->blockno);
   acquire(&bcache.locks[i]);
   b->refcnt--;
-  if(b->refcnt == 0){
-    b->lastuse = ticks;
-  }
+  // if (b->refcnt == 0) {
+  //   // no one is waiting for it.
+  //   b->next->prev = b->prev;
+  //   b->prev->next = b->next;
+  //   b->next = bcache.heads[i].next;
+  //   b->prev = &bcache.heads[i];
+  //   bcache.heads[i].next->prev = b;
+  //   bcache.heads[i].next = b;
+  // }
   release(&bcache.locks[i]);
 }
 
