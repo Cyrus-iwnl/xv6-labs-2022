@@ -80,21 +80,35 @@ bget(uint dev, uint blockno)
     }
   }
   release(&bcache.locks[i]);
+
   // Not cached.
   // Recycle the least recently used (LRU) unused buffer.
-  for(int i = 0; i<NBUCKET; i++){
-    acquire(&bcache.locks[i]);
-    for(b = bcache.heads[i].prev; b != &bcache.heads[i]; b = b->prev){
+  for(int j = 0; j<NBUCKET; j++){
+    acquire(&bcache.locks[j]);
+    for(b = bcache.heads[j].prev; b != &bcache.heads[j]; b = b->prev){
       if(b->refcnt == 0) {
         b->dev = dev;
         b->blockno = blockno;
         b->valid = 0;
         b->refcnt = 1;
-        release(&bcache.locks[i]);
+        if (i == j) {
+          release(&bcache.locks[j]);
+        } else {
+          b->next->prev = b->prev;
+          b->prev->next = b->next;
+          release(&bcache.locks[j]);
+          acquire(&bcache.locks[i]);
+          b->next = bcache.heads[i].next;
+          b->prev = &bcache.heads[i];
+          bcache.heads[i].next->prev = b;
+          bcache.heads[i].next = b;
+          release(&bcache.locks[i]);
+        }
         acquiresleep(&b->lock);
         return b;
       }
     }
+    release(&bcache.locks[j]);
   }
   panic("bget: no buffers");
 }
