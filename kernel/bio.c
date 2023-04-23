@@ -29,7 +29,7 @@
 struct {
   struct spinlock locks[NBUCKET];
   struct buf buf[NBUF];
-  struct buf heads[NBUCKET]; // hash table of buffers
+  struct buf map[NBUCKET]; // hash table of buffers
 } bcache;
 
 void
@@ -46,16 +46,15 @@ binit(void)
 
   // Create hash table of buffers
   for(int i=0; i<NBUCKET; i++){
-    bcache.heads[i].prev = &bcache.heads[i];
-    bcache.heads[i].next = &bcache.heads[i];
+    bcache.map[i].prev = &bcache.map[i];
+    bcache.map[i].next = &bcache.map[i];
   }
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
-    int i = HASH(b->blockno);
-    b->next = bcache.heads[i].next;
-    b->prev = bcache.heads + i;
+    b->next = bcache.map[0].next;
+    b->prev = bcache.map;
     initsleeplock(&b->lock, "buffer");
-    bcache.heads[i].next->prev = b;
-    bcache.heads[i].next = b;
+    bcache.map[0].next->prev = b;
+    bcache.map[0].next = b;
   }
 }
 
@@ -71,7 +70,7 @@ bget(uint dev, uint blockno)
   acquire(&bcache.locks[i]);
 
   // Is the block already cached?
-  for(b = bcache.heads[i].next; b != &bcache.heads[i]; b = b->next){
+  for(b = bcache.map[i].next; b != &bcache.map[i]; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.locks[i]);
@@ -84,7 +83,7 @@ bget(uint dev, uint blockno)
   // Not cached.
   for(int j = 0; j<NBUCKET; j++){
     acquire(&bcache.locks[j]);
-    for(b = bcache.heads[j].prev; b != &bcache.heads[j]; b = b->prev){
+    for(b = bcache.map[j].prev; b != &bcache.map[j]; b = b->prev){
       if(b->refcnt == 0) {
         b->dev = dev;
         b->blockno = blockno;
@@ -97,10 +96,10 @@ bget(uint dev, uint blockno)
           b->prev->next = b->next;
           release(&bcache.locks[j]);
           acquire(&bcache.locks[i]);
-          b->next = bcache.heads[i].next;
-          b->prev = &bcache.heads[i];
-          bcache.heads[i].next->prev = b;
-          bcache.heads[i].next = b;
+          b->next = bcache.map[i].next;
+          b->prev = &bcache.map[i];
+          bcache.map[i].next->prev = b;
+          bcache.map[i].next = b;
           release(&bcache.locks[i]);
         }
         acquiresleep(&b->lock);
@@ -147,15 +146,6 @@ brelse(struct buf *b)
   int i = HASH(b->blockno);
   acquire(&bcache.locks[i]);
   b->refcnt--;
-  // if (b->refcnt == 0) {
-  //   // no one is waiting for it.
-  //   b->next->prev = b->prev;
-  //   b->prev->next = b->next;
-  //   b->next = bcache.heads[i].next;
-  //   b->prev = &bcache.heads[i];
-  //   bcache.heads[i].next->prev = b;
-  //   bcache.heads[i].next = b;
-  // }
   release(&bcache.locks[i]);
 }
 
