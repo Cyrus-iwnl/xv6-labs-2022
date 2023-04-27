@@ -5,6 +5,10 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "sleeplock.h"
+#include "fcntl.h"
+#include "file.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -27,6 +31,50 @@ void
 trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+}
+
+int
+vmapagefault(struct proc *p, uint64 va)
+{
+  int index;
+  for (index = 0; index < NVMA; ++index) {
+    if (p->vma[index].addr <= va && va < p->vma[index].addr + p->vma[index].length) {
+      break;
+    }
+  }
+
+  if (index >= 16) {
+    printf("not vma\n");
+    return -1;
+  }
+
+  uint64 pa;
+
+  if ((pa = (uint64)kalloc()) == 0) {
+    printf("kalloc failed\n");
+    return -1;
+  }
+
+  memset((void*)pa, 0, PGSIZE);
+
+  ilock(p->vma[index].file->ip);
+  if (readi(p->vma[index].file->ip, 0, pa, va - p->vma[index].pos, PGSIZE) < 0) {
+    kfree((void*)pa);
+    iunlock(p->vma[index].file->ip);
+    printf("readi failed\n");
+    return -1;
+  }
+  iunlock(p->vma[index].file->ip);
+
+  int perm = PTE_U | (p->vma[index].prot << 1);
+
+  if (mappages(p->pagetable, va, PGSIZE, pa, perm) < 0) {
+    kfree((void*)pa);
+    printf("mapapges failed\n");
+    return -1;
+  }
+
+  return 0;
 }
 
 //
@@ -65,6 +113,10 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause() == 0xd) {
+    if (vmapagefault(p, r_stval()) < 0) {
+      setkilled(p);
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

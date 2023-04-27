@@ -5,6 +5,10 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "fs.h"
+#include "sleeplock.h"
+#include "fcntl.h"
+#include "file.h"
 
 uint64
 sys_exit(void)
@@ -90,4 +94,100 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_mmap(void)
+{
+  uint64 addr;
+  uint length;
+  int prot;
+  int flag;
+  int fd;
+  uint offset;
+
+  argaddr(0, &addr);
+  argint(1, (int*)&length);
+  argint(2, &prot);
+  argint(3, &flag);
+  argint(4, &fd);
+  argint(5, (int*)&offset);
+
+  struct proc *p = myproc();
+  struct file *file = p->ofile[fd];
+
+  if (prot & PROT_READ) {
+    if (!file->readable) {
+      return -1;
+    }
+  }
+
+  if (prot & PROT_WRITE) {
+    if (!file->writable && flag != MAP_PRIVATE) {
+      return -1;
+    }
+  }
+
+  for (int i = 0; i < NVMA; ++i) {
+    if (!p->vma[i].length && p->vma[i].size >= length) {
+      p->vma[i].file = file;
+      p->vma[i].addr = p->vma[i].pos;
+      p->vma[i].length = length;
+      p->vma[i].prot = prot;
+      p->vma[i].flag = flag;
+      filedup(file);
+      return p->vma[i].addr;
+    }
+  }
+
+  return -1;
+}
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  uint length;
+
+  argaddr(0, &addr);
+  argint(1, (int*)&length);
+
+  struct proc *p = myproc();
+
+  int index;
+  for (index = 0; index < NVMA; ++index) {
+    if (p->vma[index].addr <= addr && addr < p->vma[index].addr + p->vma[index].length) {
+      break;
+    }
+  }
+
+  if (index >= 16) {
+    return -1;
+  }
+
+  if (length > p->vma[index].length) {
+    return -1;
+  }
+
+  if (p->vma[index].flag == MAP_SHARED) {
+    filewrite(p->vma[index].file, addr, length);
+  }
+
+  uint64 va;
+  for (va = addr; va < addr + length; va += PGSIZE) {
+    pte_t *pte = walk(p->pagetable, va, 0);
+
+    if (*pte & PTE_V) {
+      uvmunmap(p->pagetable, va, 1, 0);
+    }
+  }
+
+  p->vma[index].addr = addr + length;
+  p->vma[index].length -= length;
+
+  if (p->vma[index].length == 0) {
+    fileclose(p->vma[index].file);
+  }
+
+  return 0;
 }

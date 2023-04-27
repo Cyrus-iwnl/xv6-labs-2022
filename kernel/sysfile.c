@@ -85,7 +85,7 @@ sys_write(void)
   struct file *f;
   int n;
   uint64 p;
-
+  
   argaddr(1, &p);
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
@@ -412,7 +412,7 @@ sys_chdir(void)
   char path[MAXPATH];
   struct inode *ip;
   struct proc *p = myproc();
-
+  
   begin_op();
   if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
     end_op();
@@ -501,54 +501,5 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
-  return 0;
-}
-
-uint64
-sys_mmap(void)
-{
-  // argument parse
-  uint64 addr;
-  int len, prot, flag, fd, offset;
-  struct file *fp;
-  argaddr(0, &addr);
-  argint(1, &len);
-  argint(2, &prot);
-  argint(3, &flag);
-  if(argfd(4, &fd, &fp) < 0)
-    return -1;
-  argint(5, &offset);
-
-  // authority check
-  if(!fp->writable && (prot & PROT_WRITE) && (flag & MAP_SHARED)) {
-    return -1;
-  }
-
-  // find spare map area
-  struct proc *p = myproc();
-  int i;
-  for(i=0; i<NMAP; i++){
-    if(p->maps[i].address == 0) break;
-  }
-  if(i == NMAP) return -1;
-
-  // copy fields to map
-  if(!addr) {
-    addr = PGROUNDUP(p->sz);
-    p->sz += PGROUNDUP(len);
-  }
-  p->maps[i].address = addr;
-  p->maps[i].length = len;
-  p->maps[i].prot = prot;
-  p->maps[i].flag = flag;
-  p->maps[i].offset = offset;
-  p->maps[i].fp = fp;
-  filedup(fp);
-  return addr;
-}
-
-uint64
-sys_munmap(void)
-{
   return 0;
 }

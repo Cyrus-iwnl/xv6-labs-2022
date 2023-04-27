@@ -3,7 +3,6 @@ struct context;
 struct file;
 struct inode;
 struct pipe;
-struct map;
 struct proc;
 struct spinlock;
 struct sleeplock;
